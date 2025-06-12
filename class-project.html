@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Class Projects - Tatiana Gutierrez</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="stylesheet.css">
+
+  <!-- MathJax for LaTeX rendering -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+  </script>
+</head>
+
+<body>
+  <div style="display: flex; min-height: 100vh;">
+
+<!-- Left Sidebar -->
+<div style="width: 200px; background-color: #f2f2f2; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); text-align: center;">
+
+  <!-- Logos -->
+  <img src="images/Washington.png" alt="University Logo" style="width: 80px; margin-bottom: 10px;">
+
+  <!-- Project Title -->
+  <h3 style="font-size: 14px; margin-bottom: 10px;">Class Project</h3>
+  <h3 style="font-size: 14px; margin-top: 0;">
+    <a href="https://uw-ctrl.github.io/lmc-book/" target="_blank" style="color: #0645AD; text-decoration: underline;">
+      AA-548 Linear Multivariable Control 📡
+    </a>
+  </h3>
+  <h3 style="font-size: 14px; margin-top: 0;">Spring 2025</h3>
+  
+  
+   <!-- Contribution Block -->
+  <div style="text-align: left; background-color: #e6e6e6; border-left: 4px solid #4b4b4b; padding: 10px; margin-top: 20px;">
+    <strong>Contribution 🚀 </strong>
+    <ul style="padding-left: 18px; margin-top: 10px; font-size: 13px;">
+      <li>Implemented a cascaded PID controller for a 12 state quadrotor dynamical system.</li>
+      <li>Developed control augmentation to baseline controller using Control Barrier Functions to enforce pitch attitude constraints.</li>
+      <li>Investigated standard and Higher-Order CBFs for enforcing safety on second order dynamical system such as quadrotor.</li>
+    </ul>
+  </div>
+  
+
+
+</div>
+
+    <!-- Main Content -->
+    <div style="flex-grow: 1; padding: 40px; max-width: 800px; margin: auto;">
+      <h1>🛰 Safe Control using Control Barrier Functions 🛩️ </h1>
+
+      <h3>Theory</h3>
+      <p>
+		Modern safety-critical systems require integrated decision-making, planning, and control frameworks to accomplish mission objectives while ensuring operational safety.
+
+		Control Barrier Functions (CBFs) have emerged as a valuable strategy for synthesizing controllers to ensure that state or output constraints are satisfied during system evolution.
+
+		CBFs explicitly incorporate the control input into their formulation, ensuring the states remain within a predefined safe set and thus enforce safety.
+		</p>
+		Let \( h:\mathbb{R}^n \rightarrow \mathbb{R} \) be a scalar function, and suppose we have control affine dynamics \( \dot{x} = f(x,u) \). Define the safe set as \( \mathcal{S} = \{ x \mid h(x) \geq 0\} \). Then \( h \) is a CBF for the system \( \dot{x} = f(x,u) \) if there exists a class \( \mathcal{K} \) function \( \alpha \) such that:
+	  </p>
+
+	  
+	  </p>
+
+	  <p style="text-align: center;">
+
+		\[
+		\max_{u\in\mathcal{U}} \nabla h(x)^Tf(x,u)  \geq -\alpha(h(x)) , \quad \forall \: x\in\mathcal{S}
+		\]
+		
+	  </p>
+	   \( -\alpha(h(x)) \) provides the behavior we want where we gradually restrict the motion of the system as it approaches the boundary of \( \mathcal{S}\). 
+		The max  operation there is to ensure that there exists at least one control  that satisfies the inequality. If we can find a function that satisfy the inequality over the domain, then we can guarantee that if the system starts inside \( \mathcal{S}\), then it will remain inside \( \mathcal{S}\) for all future time.
+	  <p>
+		Hence, to ensure the system remains inside \( \mathcal{S} \), we need to guarantee that the control input satisfies this inequality at all times. This trade-off can be formulated as an optimization problem:
+	  </p>
+	  
+	  <p style="text-align: center;">
+		\[
+			u^\star = \underset{u}{\text{argmin}} \; \| u - u_{\mathrm{nom}} \|_2^2
+		\]
+		\[
+			\text{subject to} \quad \nabla h(x)^T f(x,u) \geq -\alpha(h(x))
+		\]
+	  </p>
+      <p>
+		For systems with <em>control-affine</em> dynamics, this optimization problem becomes a Quadratic Program (QP), which is a convex optimization problem that can be solved efficiently using standard solvers.
+	  </p>
+
+      <h3>Quadrotor Dynamics</h3>
+      <p>
+	  Quadcopter is an underactuated aircraft powered by four rotors to lift off and controlled by varying the motor speed of each rotor, thus altering the generated lift to perform roll, pitch, and yaw. <sup>[1]</sup>.
+      <div style="text-align:center;">
+        <img src="images/forces.png" alt="Quaternion tracking plot" style="width:70%; max-width:600px;">
+        <p><em>Figure 1: Forces & Moments Acting on the Quadcopter</em></p>
+      </div>
+	  The motion of a quadcopter can be divided into translational and rotational, these equations can be obtained by obtaining the Force and Moments equations on the system. 
+	  The three accelerations and angular accelerations are obtained by dividing the force equations with mass and the moment equations with the corresponding inertias, as shown in the equations below:
+
+		<h3>Equations of Motion:</h3>
+		\[
+		\ddot{x} = \frac{T}{m} \left( \cos\psi \sin\theta \cos\phi + \sin\psi \sin\phi \right)
+		\]
+		\[
+		\ddot{y} = \frac{T}{m} \left( \sin\psi \sin\theta \cos\phi - \cos\psi \sin\phi \right)
+		\]
+		\[
+		\ddot{z} = \frac{T}{m} \cos\theta \cos\phi - g
+		\]
+		\[
+		\ddot{\phi} = \frac{k l}{I_x} \left(-\omega_1^2 + \omega_2^2 + \omega_3^2 - \omega_4^2 \right) c
+		\]
+		\[
+		\ddot{\theta} = \frac{k l}{I_y} \left(-\omega_1^2 - \omega_2^2 + \omega_3^2 - \omega_4^2 \right) c
+		\]
+		\[
+		\ddot{\psi} = \frac{b}{I_z} \left(\omega_1^2 - \omega_2^2 + \omega_3^2 - \omega_4^2 \right)
+		\]
+		
+		where, the states and controls are: 
+			  
+	  <h3>States:<h3>
+		\[
+		\mathbf{x} = [x,\, y,\, z,\, \phi,\, \theta,\, \psi,\, \dot{x},\, \dot{y},\, \dot{z},\, \dot{\phi},\, \dot{\theta},\, \dot{\psi}]^\top
+		\]
+
+		<h3>Controls Inputs:</h3>
+		\[
+		\mathbf{u} = [
+		\omega_1,\, \omega_2,\, \omega_3,\, \omega_4,\, T]
+		\]
+		
+		<p>
+		The nonlinear dynamics are linearized about a hover point condition to obtain the linear state space representation of the form: 
+		<p>
+		\[
+		   \dot{x} = A x + B u 
+		\]
+		</p>
+		<p>
+		\[
+		   y = C x + D u 
+		\]
+		</p>
+		Our objective is to design a controller for the above system that keeps the pitch within some defined limits. 
+		\[
+		\theta_{\min} \leq \theta \leq \theta_{\max}
+		\]
+      </p>
+	  
+	  <h3>PID Tracking Controller </h3>
+		A tracking PID controller is designed to follow a reference pitch trajectory and reference Vz speed.
+
+		<p>
+		\[
+		\theta_{commanded} = 0.3 \cdot \sin(0.2 \cdot t)
+		\]
+		\[
+		Vz = 0.1
+		\]
+		</p>
+		
+		Figure 2. shows the states time history when commanding the pitch reference trajectory and Vz, using the PID controller with Initial Conditions:
+		\[
+		\mathbf{x} = \begin{bmatrix}
+		1 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0
+		\end{bmatrix}^\top
+		\]
+
+      <div style="text-align:center;">
+        <img src="images/output.png" alt="Quaternion tracking plot" style="width:80%; max-width:600px;">
+        <p><em>Figure 2: States time history using PID controller</em></p>
+      </div>
+	  
+	  <h3>Traditional CBF Approach</h3>
+	  <p>
+	  An initial approach to enforce pitch constraints involved implementing a candidate quadratic Control Barrier Function (CBF) of the form 
+	  \( h(\theta) = (\theta - \theta_{\min})(\theta_{\max} - \theta) \), intended to maintain pitch within specified bounds. 
+	  However, simulation results indicated that this method had no noticeable effect on limiting the pitch angle. 
+	</p>
+	<p>
+	  This limitation arises due to the <strong>relative degree</strong> of the CBF with respect to the system dynamics — 
+	  specifically, the fact that the control input influence is not directly affecting the pitch state \( \theta\), but the pitch rate state \( \dot{\theta}\).
+	</p>
+	<p>
+	  To address this, we will explore higher-order CBFs (HOCBFs),
+	  enabling the enforcement of safety constraints on pitch more effectively.
+	</p>
+
+      <div style="text-align:center;">
+        <img src="images/cbf_traditonal.png" alt="Quaternion tracking plot" style="width:80%; max-width:600px;">
+        <p><em>Figure 3: Candidate CBF \( h(x) \geq 0\ \) </em></p>
+      </div>
+	  
+	  <h3>High Order CBF Approach</h3>
+	  
+	  <p>
+		To address the limitation imposed by the relative degree of the pitch constraint, we leverage the use of a <strong>Higher-Order Control Barrier Function (HOCBF)</strong>, originally used by Authors in <sup>[2]</sup> for a Pendulum case. 
+		The HOCBF is useful to enforce a safe pitch range by including both the pitch angle \( \theta \) and its derivative \( \dot{\theta} \), 
+		allowing direct influence over the control input. The candidate function is defined as:
+		</p>
+
+		<p>
+		\[ 
+		h(\mathbf{x}) = \bar{\theta}^2 - \theta^2 - \frac{1}{2}(\dot{\theta} + \theta)^2 
+		\] 
+		</p>
+
+		<p>
+		This formulation not only penalizes deviations of \( \theta \) from the allowable bounds \( \pm \bar{\theta} \), but also incorporates the pitch rate \( \dot{\theta} \), 
+		discouraging fast pitch movements that could lead to constraint violations in the near future.
+		</p>
+
+		<p>
+		The gradients of this barrier function with respect to the states are:
+		</p>
+
+		<p>
+		\[
+		\nabla h_{\theta} = \frac{\partial h}{\partial \theta} = -3\theta - \dot{\theta}
+		\]
+		\[
+		\nabla h_{\dot{\theta}} = \frac{\partial h}{\partial \dot{\theta}} = -(\dot{\theta} + \theta)
+		\]
+		</p>
+
+		<p>
+		Because the gradient \( \nabla h_{\dot{\theta}} \) explicitly depends on \( \dot{\theta} \), which is dynamically coupled to the control input through the system equations 
+		(e.g., torque input in a quadrotor), this HOCBF is capable of shaping the control action to enforce the pitch constraint in a proactive manner.
+		</p>
+
+		<p>
+		This approach circumvents the challenge of a relative degree greater than one by leveraging Lie derivatives of the barrier function up to the second order. 
+		As such, it is expected to produce a feasible control action that respects the pitch bounds while maintaining system stability.
+		From Figure 4. we can see that implementing the HOCBF constraint to synthetize the control input, we are able to keep the quadcopter within the bounds of \(  -0.2 \leq \theta \leq +0.2\)
+		</p>
+
+		
+		<div style="text-align:center;">
+			<img src="images/hocbf_result.png" alt="Angular velocity plot" style="width:70%; max-width:600px;">
+			<p><em>Figure 4: Pitch time history using PID + HOCBF </em></p>
+		</div>
+		
+		Figure 5, shows the slight modification to the control input Omega 1 \( \omega_1 \) with the HOCBF (u_opt) and without it (u_dyn).
+		
+		<div style="text-align:center;">
+			<img src="images/hocbf_result_controls_w1.png" alt="Angular velocity plot" style="width:70%; max-width:600px;">
+			<p><em>Figure 5: Angular rate in \( \omega_1 \)</em></p>
+		</div>
+
+     <h3>Takeaways</h3>
+		 <ul>
+	  <li>
+		<strong>Traditional Control Barrier Functions (CBFs)</strong> may fail to enforce constraints effectively in systems with <em>high relative degree</em>, where the safety constraint does not appear directly in the first derivative of the state.
+	  </li>
+	  <li>
+		<strong>Higher-Order Control Barrier Functions (HOCBFs)</strong> extend the applicability of CBFs by handling such high-relative-degree constraints, enabling <em>direct influence over the control input</em>.
+	  </li>
+	  <li>
+		Incorporating HOCBFs into a <strong>Quadratic Programming (QP) optimization framework</strong> allows for the systematic computation of control inputs that balance performance with safety, which is critical in <em>real-time, safety-critical systems</em> like autonomous drones or vehicles.
+	  </li>
+	  <li>
+		The proposed method demonstrates potential for practical applications, such as <em>maintaining pitch limits to ensure stable flight.
+	</ul>
+	
+	<!-- References Section -->
+	<p><strong>References:</strong></p>
+	<ol>
+	  <li>
+		Budihartono, Michael, <i>"In-Flight Testing & Verification of an Adaptive Distributed Fault-Tolerant Control Architecture"</i> (2023). Doctoral Dissertations and Master's Theses. 753.
+	  </li>
+	  <li>
+		Cohen, M. H., Molnar, T. G., and Ames, A. D., <i>"Safety-critical control for autonomous systems: Control barrier functions via
+reduced-order models,"</i> (2024). Annual Reviews in Control, Vol. 57, pp. 100947
+	  </li>
+	</ol>
+	
+	 </p>
+	<div style="text-align:center;">
+			<img src="images/poster.png" alt="Angular velocity plot" style="width:40%; max-width:600px;">
+			<p><em>Poster presentation @UW, June 2025 </em></p>
+		</div>
+	
+
+	
+      
+      <hr style="margin-top: 40px;">
+      <p style="text-align:center;">
+        <a href="index.html">← Back to Home</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
